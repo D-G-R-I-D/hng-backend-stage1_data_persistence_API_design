@@ -33,4 +33,6 @@ build/
 .vscode/
 
 src/main/resources/application-dev.properties
-
+.env
+application-dev.properties
+application-local.properties
