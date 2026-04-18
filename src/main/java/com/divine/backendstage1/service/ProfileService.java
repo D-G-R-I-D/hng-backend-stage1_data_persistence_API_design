@@ -68,39 +68,73 @@ public class ProfileService {
             throw new RuntimeException("UPSTREAM_ERROR: upstream api call failed");
         }
 
-        // 3. Validate Genderize response
-        String gender = (String) genderizeData.get("gender");
+//        // 3. Validate Genderize response
+//        String gender = (String) genderizeData.get("gender");
+//        Object countObj = genderizeData.get("count");
+//        int count = countObj != null ? ((Number) countObj).intValue() : 0;
+//        if (gender == null || count == 0) {
+//            throw new RuntimeException("UPSTREAM_ERROR: Genderize returned an invalid response");
+//        }
+
+        // 3. Handle Genderize response
+        String gender = genderizeData.get("gender") != null
+                ? (String) genderizeData.get("gender") : "unknown";
         Object countObj = genderizeData.get("count");
         int count = countObj != null ? ((Number) countObj).intValue() : 0;
-        if (gender == null || count == 0) {
-            throw new RuntimeException("UPSTREAM_ERROR: Genderize returned an invalid response");
-        }
+        double genderProbability = genderizeData.get("probability") != null
+                ? ((Number) genderizeData.get("probability")).doubleValue() : 0.0;
 
-        // 4. Validate Agify response
+//        // 4. Validate Agify response
+//        Object ageObj = agifyData.get("age");
+//        if (ageObj == null) {
+//            throw new RuntimeException("UPSTREAM_ERROR: Agify returned an invalid response");
+//        }
+//        int age = ((Number) ageObj).intValue();
+
+        // 4. Handle Agify response
         Object ageObj = agifyData.get("age");
-        if (ageObj == null) {
-            throw new RuntimeException("UPSTREAM_ERROR: Agify returned an invalid response");
+        int age = ageObj != null ? ((Number) ageObj).intValue() : 0;
+
+//        // 5. Validate Nationalize response
+//        List<Map<String, Object>> countries =
+//                mapper.convertValue(
+//                        nationalizeData.get("country"),
+//                        new TypeReference<List<Map<String, Object>>>() {});
+//        if (countries == null || countries.isEmpty()) {
+//            throw new RuntimeException("UPSTREAM_ERROR: Nationalize returned an invalid response");
+//        }
+//
+//        // 6. Pick country with highest probability
+//        Map<String, Object> topCountry = countries.stream()
+//            .max(Comparator.comparingDouble(
+//                        c -> ((Number) c.get("probability")).doubleValue()))
+//                .orElseThrow(() ->
+//                        new RuntimeException("UPSTREAM_ERROR: Nationalize returned an invalid response"));
+//
+//        String countryId = (String) topCountry.get("country_id");
+//        double countryProbability = ((Number) topCountry.get("probability")).doubleValue();
+
+        // 5. Handle Nationalize response
+        List<Map<String, Object>> countries;
+        try {
+            countries = mapper.convertValue(
+                    nationalizeData.get("country"),
+                    new TypeReference<List<Map<String, Object>>>() {});
+        } catch (Exception e) {
+            countries = new ArrayList<>();
         }
-        int age = ((Number) ageObj).intValue();
 
-        // 5. Validate Nationalize response
-        List<Map<String, Object>> countries =
-                mapper.convertValue(
-                        nationalizeData.get("country"),
-                        new TypeReference<List<Map<String, Object>>>() {});
-        if (countries == null || countries.isEmpty()) {
-            throw new RuntimeException("UPSTREAM_ERROR: Nationalize returned an invalid response");
+// 6. Pick country with highest probability (default to empty if none)
+        String countryId = "unknown";
+        double countryProbability = 0.0;
+        if (countries != null && !countries.isEmpty()) {
+            Map<String, Object> topCountry = countries.stream()
+                    .max(Comparator.comparingDouble(
+                            c -> ((Number) c.get("probability")).doubleValue()))
+                    .orElse(null);
+            countryId = (String) topCountry.get("country_id");
+            countryProbability = ((Number) topCountry.get("probability")).doubleValue();
         }
-
-        // 6. Pick country with highest probability
-        Map<String, Object> topCountry = countries.stream()
-            .max(Comparator.comparingDouble(
-                        c -> ((Number) c.get("probability")).doubleValue()))
-                .orElseThrow(() ->
-                        new RuntimeException("UPSTREAM_ERROR: Nationalize returned an invalid response"));
-
-        String countryId = (String) topCountry.get("country_id");
-        double countryProbability = ((Number) topCountry.get("probability")).doubleValue();
 
         // 7. Classify age group
         String ageGroup = classifyAgeGroup(age);
@@ -110,7 +144,7 @@ public class ProfileService {
         profile.setId(Generators.timeBasedEpochGenerator().generate()); // UUID v7
         profile.setName(name.toLowerCase());
         profile.setGender(gender);
-        profile.setGenderProbability(((Number) genderizeData.get("probability")).doubleValue());
+        profile.setGenderProbability(genderProbability);
         profile.setSampleSize(count);
         profile.setAge(age);
         profile.setAgeGroup(ageGroup);
