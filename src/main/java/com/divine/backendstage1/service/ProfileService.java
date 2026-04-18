@@ -31,12 +31,18 @@ public class ProfileService {
 
         // 1. Check if profile already exists (idempotency)
         Optional<Profile> existing = profileRepository.findByNameIgnoreCase(name);
+//        if (existing.isPresent()) {
+//            Map<String, Object> response = new LinkedHashMap<>();
+//            response.put("status", "success");
+//            response.put("message", "Profile already exists");
+//            response.put("data", formatProfile(existing.get()));
+//            return response;
+//        }
         if (existing.isPresent()) {
             Map<String, Object> response = new LinkedHashMap<>();
             response.put("status", "success");
-            response.put("message", "Profile already exists");
             response.put("data", formatProfile(existing.get()));
-            return response;
+            return response;  // no "message" key
         }
 
         // 2. Call all 3 APIs in parallel

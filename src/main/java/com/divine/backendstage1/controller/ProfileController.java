@@ -44,9 +44,13 @@ public class ProfileController {
             Map<String, Object> result = profileService.createProfile(name);
 
             // If profile already exists return 200
-            if (result.containsKey("message")) {
-                return ResponseEntity.ok(result);
-            }
+//            if (result.containsKey("message")) {
+//                return ResponseEntity.ok(result);
+//            }
+            // If profile already exists return 201 (idempotent)
+//            if (result.containsKey("message")) {
+//                return ResponseEntity.status(HttpStatus.CREATED).body(result);
+//            }
 
             // New profile created return 201
             return ResponseEntity.status(HttpStatus.CREATED).body(result);
