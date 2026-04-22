@@ -7,7 +7,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.uuid.Generators;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import com.divine.backendstage1.service.NaturalLanguageParser;
 
 import java.time.Instant;
 import java.util.*;
@@ -18,31 +23,136 @@ public class ProfileService {
 
     private final ProfileRepository profileRepository;
     private final ExternalApiService externalApiService;
-    ObjectMapper mapper = new ObjectMapper();
+    private final ObjectMapper mapper;
+//    private final ProfileSeeder profileSeeder;
+    private final NaturalLanguageParser naturalLanguageParser;
+
+    private static final Map<String, String> COUNTRY_NAMES = Map.<String, String>ofEntries(
+            // Africa
+            Map.entry("NG", "Nigeria"),
+            Map.entry("GH", "Ghana"),
+            Map.entry("KE", "Kenya"),
+            Map.entry("ZA", "South Africa"),
+            Map.entry("ET", "Ethiopia"),
+            Map.entry("AO", "Angola"),
+            Map.entry("BJ", "Benin"),
+            Map.entry("TG", "Togo"),
+            Map.entry("CI", "Ivory Coast"),
+            Map.entry("SN", "Senegal"),
+            Map.entry("CM", "Cameroon"),
+            Map.entry("UG", "Uganda"),
+            Map.entry("RW", "Rwanda"),
+            Map.entry("TZ", "Tanzania"),
+            Map.entry("MZ", "Mozambique"),
+            Map.entry("ZM", "Zambia"),
+            Map.entry("ZW", "Zimbabwe"),
+            Map.entry("MW", "Malawi"),
+            Map.entry("BW", "Botswana"),
+            Map.entry("NA", "Namibia"),
+            Map.entry("ML", "Mali"),
+            Map.entry("BF", "Burkina Faso"),
+            Map.entry("NE", "Niger"),
+            Map.entry("TD", "Chad"),
+            Map.entry("SD", "Sudan"),
+            Map.entry("SS", "South Sudan"),
+            Map.entry("ER", "Eritrea"),
+            Map.entry("SO", "Somalia"),
+            Map.entry("DJ", "Djibouti"),
+            Map.entry("MR", "Mauritania"),
+            Map.entry("GM", "Gambia"),
+            Map.entry("GN", "Guinea"),
+            Map.entry("GW", "Guinea-Bissau"),
+            Map.entry("SL", "Sierra Leone"),
+            Map.entry("LR", "Liberia"),
+            Map.entry("MA", "Morocco"),
+            Map.entry("DZ", "Algeria"),
+            Map.entry("TN", "Tunisia"),
+            Map.entry("LY", "Libya"),
+            Map.entry("EG", "Egypt"),
+            // Europe
+            Map.entry("GB", "United Kingdom"),
+            Map.entry("DE", "Germany"),
+            Map.entry("FR", "France"),
+            Map.entry("IT", "Italy"),
+            Map.entry("ES", "Spain"),
+            Map.entry("PT", "Portugal"),
+            Map.entry("NL", "Netherlands"),
+            Map.entry("BE", "Belgium"),
+            Map.entry("CH", "Switzerland"),
+            Map.entry("SE", "Sweden"),
+            Map.entry("NO", "Norway"),
+            Map.entry("DK", "Denmark"),
+            Map.entry("FI", "Finland"),
+            Map.entry("PL", "Poland"),
+            Map.entry("RU", "Russia"),
+            Map.entry("UA", "Ukraine"),
+            Map.entry("CZ", "Czech Republic"),
+            Map.entry("RO", "Romania"),
+            Map.entry("HU", "Hungary"),
+            Map.entry("GR", "Greece"),
+            Map.entry("AT", "Austria"),
+            Map.entry("IE", "Ireland"),
+            // Americas
+            Map.entry("US", "United States"),
+            Map.entry("CA", "Canada"),
+            Map.entry("BR", "Brazil"),
+            Map.entry("MX", "Mexico"),
+            Map.entry("AR", "Argentina"),
+            Map.entry("CO", "Colombia"),
+            Map.entry("CL", "Chile"),
+            Map.entry("PE", "Peru"),
+            Map.entry("VE", "Venezuela"),
+            Map.entry("EC", "Ecuador"),
+            Map.entry("BO", "Bolivia"),
+            Map.entry("PY", "Paraguay"),
+            Map.entry("UY", "Uruguay"),
+            // Asia
+            Map.entry("CN", "China"),
+            Map.entry("JP", "Japan"),
+            Map.entry("IN", "India"),
+            Map.entry("PK", "Pakistan"),
+            Map.entry("BD", "Bangladesh"),
+            Map.entry("ID", "Indonesia"),
+            Map.entry("PH", "Philippines"),
+            Map.entry("VN", "Vietnam"),
+            Map.entry("TH", "Thailand"),
+            Map.entry("KR", "South Korea"),
+            Map.entry("TR", "Turkey"),
+            Map.entry("SA", "Saudi Arabia"),
+            Map.entry("AE", "United Arab Emirates"),
+            Map.entry("IQ", "Iraq"),
+            Map.entry("IR", "Iran"),
+            Map.entry("SY", "Syria"),
+            Map.entry("MY", "Malaysia"),
+            Map.entry("MM", "Myanmar"),
+            // Oceania
+            Map.entry("AU", "Australia"),
+            Map.entry("NZ", "New Zealand")
+    );
+
 
     public ProfileService(ProfileRepository profileRepository,
-                          ExternalApiService externalApiService) {
+                          ExternalApiService externalApiService,
+                          ObjectMapper mapper,
+//                          ProfileSeeder profileSeeder,
+                          NaturalLanguageParser naturalLanguageParser1) {  // Inject shared ObjectMapper
         this.profileRepository = profileRepository;
         this.externalApiService = externalApiService;
+        this.mapper = mapper;
+//        this.profileSeeder = profileSeeder;
+        this.naturalLanguageParser = naturalLanguageParser1;
     }
 
     // ---------- CREATE ----------
     public Map<String, Object> createProfile(String name) {
 
-        // 1. Check if profile already exists (idempotency)
+        // 1. Idempotency check
         Optional<Profile> existing = profileRepository.findByNameIgnoreCase(name);
-//        if (existing.isPresent()) {
-//            Map<String, Object> response = new LinkedHashMap<>();
-//            response.put("status", "success");
-//            response.put("message", "Profile already exists");
-//            response.put("data", formatProfile(existing.get()));
-//            return response;
-//        }
         if (existing.isPresent()) {
-            Map<String, Object> response = new LinkedHashMap<>();
-            response.put("status", "success");
-            response.put("data", formatProfile(existing.get()));
-            return response;  // no "message" key
+            return Map.of(
+                    "status", "success",
+                    "data", formatProfile(existing.get())
+            );
         }
 
         // 2. Call all 3 APIs in parallel
@@ -53,112 +163,81 @@ public class ProfileService {
         CompletableFuture<Map<String, Object>> nationalizeFuture =
                 externalApiService.callNationalizeAsync(name);
 
-        // Wait for all 3 to complete
+        // 3. Wait for all to complete
         CompletableFuture.allOf(genderizeFuture, agifyFuture, nationalizeFuture).join();
 
-        Map<String, Object> genderizeData;
-        Map<String, Object> agifyData;
-        Map<String, Object> nationalizeData;
+        // 4. Extract results (join() is safe here - futures are already done)
+        Map<String, Object> genderizeData = genderizeFuture.join();
+        Map<String, Object> agifyData = agifyFuture.join();
+        Map<String, Object> nationalizeData = nationalizeFuture.join();
 
-        try {
-            genderizeData = genderizeFuture.get();
-            agifyData = agifyFuture.get();
-            nationalizeData = nationalizeFuture.get();
-        } catch (Exception e) {
-            throw new RuntimeException("UPSTREAM_ERROR: upstream api call failed");
-        }
+        // 5. Parse responses with graceful defaults
+        String gender = Optional.ofNullable(genderizeData.get("gender"))
+                .map(Object::toString)
+                .orElse("unknown");
 
-//        // 3. Validate Genderize response
-//        String gender = (String) genderizeData.get("gender");
-//        Object countObj = genderizeData.get("count");
-//        int count = countObj != null ? ((Number) countObj).intValue() : 0;
-//        if (gender == null || count == 0) {
-//            throw new RuntimeException("UPSTREAM_ERROR: Genderize returned an invalid response");
-//        }
+        int count = Optional.ofNullable(genderizeData.get("count"))
+                .map(n -> ((Number) n).intValue())
+                .orElse(0);
 
-        // 3. Handle Genderize response
-        String gender = genderizeData.get("gender") != null
-                ? (String) genderizeData.get("gender") : "unknown";
-        Object countObj = genderizeData.get("count");
-        int count = countObj != null ? ((Number) countObj).intValue() : 0;
-        double genderProbability = genderizeData.get("probability") != null
-                ? ((Number) genderizeData.get("probability")).doubleValue() : 0.0;
+        double genderProbability = Optional.ofNullable(genderizeData.get("probability"))
+                .map(n -> ((Number) n).doubleValue())
+                .orElse(0.0);
 
-//        // 4. Validate Agify response
-//        Object ageObj = agifyData.get("age");
-//        if (ageObj == null) {
-//            throw new RuntimeException("UPSTREAM_ERROR: Agify returned an invalid response");
-//        }
-//        int age = ((Number) ageObj).intValue();
+        int age = Optional.ofNullable(agifyData.get("age"))
+                .map(n -> ((Number) n).intValue())
+                .orElse(0);
 
-        // 4. Handle Agify response
-        Object ageObj = agifyData.get("age");
-        int age = ageObj != null ? ((Number) ageObj).intValue() : 0;
-
-//        // 5. Validate Nationalize response
-//        List<Map<String, Object>> countries =
-//                mapper.convertValue(
-//                        nationalizeData.get("country"),
-//                        new TypeReference<List<Map<String, Object>>>() {});
-//        if (countries == null || countries.isEmpty()) {
-//            throw new RuntimeException("UPSTREAM_ERROR: Nationalize returned an invalid response");
-//        }
-//
-//        // 6. Pick country with highest probability
-//        Map<String, Object> topCountry = countries.stream()
-//            .max(Comparator.comparingDouble(
-//                        c -> ((Number) c.get("probability")).doubleValue()))
-//                .orElseThrow(() ->
-//                        new RuntimeException("UPSTREAM_ERROR: Nationalize returned an invalid response"));
-//
-//        String countryId = (String) topCountry.get("country_id");
-//        double countryProbability = ((Number) topCountry.get("probability")).doubleValue();
-
-        // 5. Handle Nationalize response
-        List<Map<String, Object>> countries;
-        try {
-            countries = mapper.convertValue(
-                    nationalizeData.get("country"),
-                    new TypeReference<List<Map<String, Object>>>() {});
-        } catch (Exception e) {
-            countries = new ArrayList<>();
-        }
-
-// 6. Pick country with highest probability (default to empty if none)
+        // 6. Parse country data
         String countryId = "unknown";
+        String countryName = "Unknown";
         double countryProbability = 0.0;
-        if (countries != null && !countries.isEmpty()) {
-            Map<String, Object> topCountry = countries.stream()
-                    .max(Comparator.comparingDouble(
-                            c -> ((Number) c.get("probability")).doubleValue()))
-                    .orElse(null);
-            countryId = (String) topCountry.get("country_id");
-            countryProbability = ((Number) topCountry.get("probability")).doubleValue();
+
+        try {
+            List<Map<String, Object>> countries = mapper.convertValue(
+                    nationalizeData.get("country"),
+                    new TypeReference<>() {});
+
+            if (countries != null && !countries.isEmpty()) {
+                Map<String, Object> topCountry = countries.stream()
+                        .max(Comparator.comparingDouble(
+                                c -> ((Number) c.get("probability")).doubleValue()))
+                        .orElse(null);
+
+                countryId = Optional.ofNullable(topCountry.get("country_id"))
+                        .map(Object::toString)
+                        .orElse("unknown");
+
+                countryName = COUNTRY_NAMES.getOrDefault(countryId, countryId);
+
+                countryProbability = Optional.ofNullable(topCountry.get("probability"))
+                        .map(n -> ((Number) n).doubleValue())
+                        .orElse(0.0);
+            }
+        } catch (Exception e) {
+            // Country parsing failed - defaults remain "unknown" / 0.0
         }
 
-        // 7. Classify age group
-        String ageGroup = classifyAgeGroup(age);
-
-        // 8. Build and save profile
+        // 7. Build and save profile
         Profile profile = new Profile();
-        profile.setId(Generators.timeBasedEpochGenerator().generate()); // UUID v7
+        profile.setId(Generators.timeBasedEpochGenerator().generate());
         profile.setName(name.toLowerCase());
         profile.setGender(gender);
         profile.setGenderProbability(genderProbability);
-        profile.setSampleSize(count);
+//        profile.setSampleSize(count);
         profile.setAge(age);
-        profile.setAgeGroup(ageGroup);
+        profile.setAgeGroup(classifyAgeGroup(age));
         profile.setCountryId(countryId);
+        profile.setCountryName(countryName);
         profile.setCountryProbability(countryProbability);
         profile.setCreatedAt(Instant.now());
 
         profileRepository.save(profile);
 
-        // 9. Return 201 response
-        Map<String, Object> response = new LinkedHashMap<>();
-        response.put("status", "success");
-        response.put("data", formatProfile(profile));
-        return response;
+        return Map.of(
+                "status", "success",
+                "data", formatProfile(profile)
+        );
     }
 
     // ---------- GET SINGLE ----------
@@ -166,64 +245,138 @@ public class ProfileService {
         Profile profile = profileRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("NOT_FOUND: Profile not found"));
 
-        Map<String, Object> response = new LinkedHashMap<>();
-        response.put("status", "success");
-        response.put("data", formatProfile(profile));
-        return response;
+        return Map.of(
+                "status", "success",
+                "data", formatProfile(profile)
+        );
     }
 
-    // ---------- GET ALL WITH FILTERS ----------
+    // ---------- GET ALL ----------
     public Map<String, Object> getAllProfiles(String gender, String countryId, String ageGroup) {
-        List<Profile> profiles;
+        List<Profile> profiles = findByFilters(gender, countryId, ageGroup);
 
-        boolean hasGender = gender != null && !gender.isEmpty();
-        boolean hasCountry = countryId != null && !countryId.isEmpty();
-        boolean hasAgeGroup = ageGroup != null && !ageGroup.isEmpty();
+        return Map.of(
+                "status", "success",
+                "count", profiles.size(),
+                "data", profiles.stream()
+                        .map(this::formatProfileList)
+                        .toList()
+        );
+    }
 
-        if (hasGender && hasCountry && hasAgeGroup) {
-            profiles = profileRepository
-                    .findByGenderIgnoreCaseAndCountryIdIgnoreCaseAndAgeGroupIgnoreCase(
-                            gender, countryId, ageGroup);
-        } else if (hasGender && hasCountry) {
-            profiles = profileRepository
-                    .findByGenderIgnoreCaseAndCountryIdIgnoreCase(gender, countryId);
-        } else if (hasGender && hasAgeGroup) {
-            profiles = profileRepository
-                    .findByGenderIgnoreCaseAndAgeGroupIgnoreCase(gender, ageGroup);
-        } else if (hasCountry && hasAgeGroup) {
-            profiles = profileRepository
-                    .findByCountryIdIgnoreCaseAndAgeGroupIgnoreCase(countryId, ageGroup);
-        } else if (hasGender) {
-            profiles = profileRepository.findByGenderIgnoreCase(gender);
-        } else if (hasCountry) {
-            profiles = profileRepository.findByCountryIdIgnoreCase(countryId);
-        } else if (hasAgeGroup) {
-            profiles = profileRepository.findByAgeGroupIgnoreCase(ageGroup);
+    // ==================== ADVANCED GET ALL ====================
+    public Map<String, Object> getAllProfiles(
+            String gender, String ageGroup, String countryId,
+            Integer minAge, Integer maxAge,
+            Double minGenderProb, Double minCountryProb,
+            String sortBy, String order,
+            int page, int limit) {
+
+        limit = Math.min(limit, 50);
+        Sort.Direction direction = "desc".equalsIgnoreCase(order) ? Sort.Direction.DESC : Sort.Direction.ASC;
+
+        Sort sort = switch (sortBy != null ? sortBy.toLowerCase() : "created_at") {
+            case "age" -> Sort.by(direction, "age");
+            case "gender_probability" -> Sort.by(direction, "genderProbability");
+            default -> Sort.by(direction, "createdAt");
+        };
+
+        Pageable pageable = PageRequest.of(page - 1, limit, sort);
+
+//        Page<Profile> profilePage = profileRepository.findAllByGenderIgnoreCaseAndAgeGroupIgnoreCaseAndCountryIdIgnoreCaseAndAgeBetweenAndGenderProbabilityGreaterThanEqualAndCountryProbabilityGreaterThanEqual(
+//                gender, ageGroup, countryId,
+//                minAge != null ? minAge : 0,
+//                maxAge != null ? maxAge : 120,
+//                minGenderProb != null ? minGenderProb : 0.0,
+//                minCountryProb != null ? minCountryProb : 0.0,
+//                pageable);
+
+        Page<Profile> profilePage;
+
+        boolean hasGender = gender != null && !gender.isBlank();
+        boolean hasAgeGroup = ageGroup != null && !ageGroup.isBlank();
+        boolean hasCountryId = countryId != null && !countryId.isBlank();
+
+        if (!hasGender && !hasAgeGroup && !hasCountryId && minAge == null && maxAge == null
+                && minGenderProb == null && minCountryProb == null) {
+            profilePage = profileRepository.findAll(pageable);
         } else {
-            profiles = profileRepository.findAll();
+            profilePage = profileRepository
+                    .findAllByGenderIgnoreCaseAndAgeGroupIgnoreCaseAndCountryIdIgnoreCaseAndAgeBetweenAndGenderProbabilityGreaterThanEqualAndCountryProbabilityGreaterThanEqual(
+                            hasGender ? gender : "%",
+                            hasAgeGroup ? ageGroup : "%",
+                            hasCountryId ? countryId : "%",
+                            minAge != null ? minAge : 0,
+                            maxAge != null ? maxAge : 120,
+                            minGenderProb != null ? minGenderProb : 0.0,
+                            minCountryProb != null ? minCountryProb : 0.0,
+                            pageable);
         }
 
-        List<Map<String, Object>> dataList = profiles.stream()
-                .map(this::formatProfileList)
-                .toList();
+        return Map.of(
+                "status", "success",
+                "page", page,
+                "limit", limit,
+                "total", profilePage.getTotalElements(),
+                "data", profilePage.getContent().stream().map(this::formatProfileList).toList()
+        );
+    }
 
-        Map<String, Object> response = new LinkedHashMap<>();
-        response.put("status", "success");
-        response.put("count", dataList.size());
-        response.put("data", dataList);
-        return response;
+    // ==================== NATURAL LANGUAGE SEARCH ====================
+    public Map<String, Object> searchProfiles(String query, int page, int limit) {
+        // We'll create a separate parser class
+        QueryFilters filters = naturalLanguageParser.parse(query);
+
+        if (filters == null) {
+            return Map.of("status", "error", "message", "Unable to interpret query");
+        }
+
+        return getAllProfiles(
+                filters.gender(), filters.ageGroup(), filters.countryId(),
+                filters.minAge(), filters.maxAge(),
+                filters.minGenderProb(), filters.minCountryProb(),
+                "created_at", "desc", page, limit
+        );
+    }
+
+    private @NotNull List<Profile> findByFilters(String gender, String countryId, String ageGroup) {
+        boolean hasGender = hasValue(gender);
+        boolean hasCountry = hasValue(countryId);
+        boolean hasAgeGroup = hasValue(ageGroup);
+
+        if (hasGender && hasCountry && hasAgeGroup) {
+            return profileRepository.findByGenderIgnoreCaseAndCountryIdIgnoreCaseAndAgeGroupIgnoreCase(
+                    gender, countryId, ageGroup);
+        }
+        if (hasGender && hasCountry) {
+            return profileRepository.findByGenderIgnoreCaseAndCountryIdIgnoreCase(gender, countryId);
+        }
+        if (hasGender && hasAgeGroup) {
+            return profileRepository.findByGenderIgnoreCaseAndAgeGroupIgnoreCase(gender, ageGroup);
+        }
+        if (hasCountry && hasAgeGroup) {
+            return profileRepository.findByCountryIdIgnoreCaseAndAgeGroupIgnoreCase(countryId, ageGroup);
+        }
+        if (hasGender) return profileRepository.findByGenderIgnoreCase(gender);
+        if (hasCountry) return profileRepository.findByCountryIdIgnoreCase(countryId);
+        if (hasAgeGroup) return profileRepository.findByAgeGroupIgnoreCase(ageGroup);
+
+        return profileRepository.findAll();
+    }
+
+    private static boolean hasValue(String value) {
+        return value != null && !value.isEmpty();
     }
 
     // ---------- DELETE ----------
     public void deleteProfile(UUID id) {
         if (!profileRepository.existsById(id)) {
-            throw new RuntimeException("NOT_FOUND: Profile not found / Profile already deleted");
+            throw new RuntimeException("NOT_FOUND: Profile not found");
         }
         profileRepository.deleteById(id);
     }
 
     // ---------- HELPERS ----------
-
     @Contract(pure = true)
     private @NotNull String classifyAgeGroup(int age) {
         if (age <= 12) return "child";
@@ -232,23 +385,45 @@ public class ProfileService {
         return "senior";
     }
 
-    // Full profile format (for POST and GET single)
+    private int getInt(Map<String, Object> map, String key) {
+        return Optional.ofNullable(map.get(key)).map(n -> ((Number) n).intValue()).orElse(0);
+    }
+
+    private double getDouble(Map<String, Object> map, String key) {
+        return Optional.ofNullable(map.get(key)).map(n -> ((Number) n).doubleValue()).orElse(0.0);
+    }
+
     private @NotNull Map<String, Object> formatProfile(@NotNull Profile p) {
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("id", p.getId().toString());
         data.put("name", p.getName());
         data.put("gender", p.getGender());
         data.put("gender_probability", p.getGenderProbability());
-        data.put("sample_size", p.getSampleSize());
+//        data.put("sample_size", p.getSampleSize());
         data.put("age", p.getAge());
         data.put("age_group", p.getAgeGroup());
         data.put("country_id", p.getCountryId());
+        data.put("country_name", p.getCountryName());
         data.put("country_probability", p.getCountryProbability());
         data.put("created_at", p.getCreatedAt().toString());
         return data;
     }
 
-    // List profile format (for GET all)
+//    private @NotNull Map<String, Object> formatProfileList(@NotNull Profile p) {
+//        Map<String, Object> data = new LinkedHashMap<>();
+//        data.put("id", p.getId().toString());
+//        data.put("name", p.getName());
+//        data.put("gender", p.getGender());
+//        data.put("gender_probability", p.getGenderProbability()); // ADD THIS
+//        data.put("age", p.getAge());
+//        data.put("age_group", p.getAgeGroup());
+//        data.put("country_id", p.getCountryId());
+//        data.put("country_name", p.getCountryName());
+//        data.put("country_probability", p.getCountryProbability()); // ADD THIS
+//        data.put("created_at", p.getCreatedAt().toString()); // ADD THIS
+//        return data;
+//    }
+
     private @NotNull Map<String, Object> formatProfileList(@NotNull Profile p) {
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("id", p.getId().toString());
@@ -257,6 +432,7 @@ public class ProfileService {
         data.put("age", p.getAge());
         data.put("age_group", p.getAgeGroup());
         data.put("country_id", p.getCountryId());
+        data.put( "country_name", p.getCountryName());
         return data;
     }
 }

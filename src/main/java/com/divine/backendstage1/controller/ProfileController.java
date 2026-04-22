@@ -6,6 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 @RestController
@@ -19,6 +20,7 @@ public class ProfileController {
     }
 
     // 1. POST /api/profiles
+    // ----- CREATE (for seeding / manual entry) -----
     @PostMapping
     public ResponseEntity<Object> createProfile(@RequestBody Map<String, Object> body) {
 
@@ -54,11 +56,15 @@ public class ProfileController {
 
             // New profile created return 201
             return ResponseEntity.status(HttpStatus.CREATED).body(result);
+//            return ResponseEntity.ok(result);
 
         } catch (RuntimeException e) {
             return handleException(e);
         }
     }
+
+
+
 
     // 2. GET /api/profiles/{id}
     @GetMapping("/{id}")
@@ -76,15 +82,64 @@ public class ProfileController {
         }
     }
 
-    // 3. GET /api/profiles
+
+//    // 3. GET /api/profiles
+//    @GetMapping
+//    public ResponseEntity<Object> getAllProfiles(
+//            @RequestParam(required = false) String gender,
+//            @RequestParam(required = false) String country_id,
+//            @RequestParam(required = false) String age_group) {
+//        try {
+//            Map<String, Object> result =
+//                    profileService.getAllProfiles(gender, country_id, age_group);
+//            return ResponseEntity.ok(result);
+//        } catch (RuntimeException e) {
+//            return handleException(e);
+//        }
+//    }
+
+    // 3. GET /api/profiles (Advanced with filters, sorting, pagination)
     @GetMapping
     public ResponseEntity<Object> getAllProfiles(
             @RequestParam(required = false) String gender,
+            @RequestParam(required = false) String age_group,
             @RequestParam(required = false) String country_id,
-            @RequestParam(required = false) String age_group) {
+            @RequestParam(required = false) Integer min_age,
+            @RequestParam(required = false) Integer max_age,
+            @RequestParam(required = false) Double min_gender_probability,
+            @RequestParam(required = false) Double min_country_probability,
+            @RequestParam(required = false, defaultValue = "created_at") String sort_by,
+            @RequestParam(required = false, defaultValue = "desc") String order,
+            @RequestParam(required = false, defaultValue = "1") int page,
+            @RequestParam(required = false, defaultValue = "10") int limit) {
+
+        // Validate parameters (basic)
+//        if (page < 1) page = 1;
+//        if (!order.equalsIgnoreCase("asc") && !order.equalsIgnoreCase("desc")) order = "desc";
+        // Validate pagination
+        if (page < 1) page = 1;
+        if (limit < 1) limit = 10;
+        if (limit > 50) limit = 50;
+
         try {
-            Map<String, Object> result =
-                    profileService.getAllProfiles(gender, country_id, age_group);
+            // Validate sort_by
+            if (!Set.of("age", "created_at", "gender_probability").contains(sort_by)) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("status", "error", "message", "Invalid sort_by parameter"));
+            }
+
+            // Validate order
+            if (!Set.of("asc", "desc").contains(order.toLowerCase())) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("status", "error", "message", "Invalid order parameter"));
+            }
+
+            Map<String, Object> result = profileService.getAllProfiles(
+                    gender, age_group, country_id,
+                    min_age, max_age,
+                    min_gender_probability, min_country_probability,
+                    sort_by, order, page, limit);
+
             return ResponseEntity.ok(result);
         } catch (RuntimeException e) {
             return handleException(e);
@@ -97,7 +152,8 @@ public class ProfileController {
         try {
             UUID uuid = UUID.fromString(id);
             profileService.deleteProfile(uuid);
-            return ResponseEntity.noContent().build(); // 204
+//            return ResponseEntity.noContent().build(); // 204
+            return ResponseEntity.ok(Map.of("status", "success", "message", "Profile deleted"));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest()
                     .body(Map.of("status", "error",
@@ -106,6 +162,23 @@ public class ProfileController {
             return handleException(e);
         }
     }
+
+//    // ----- DELETE -----
+//    @DeleteMapping("/{id}")
+//    public ResponseEntity<Map<String, Object>> deleteProfile(@PathVariable UUID id) {
+//        try {
+//            profileService.deleteProfile(id);
+//            return ResponseEntity.ok(Map.of("status", "success", "message", "Profile deleted"));
+//        } catch (RuntimeException e) {
+//            if (e.getMessage().contains("NOT_FOUND")) {
+//                return ResponseEntity.status(404).body(Map.of(
+//                        "status", "error",
+//                        "message", "Profile not found"
+//                ));
+//            }
+//            throw e;
+//        }
+//    }
 
     // ---------- SHARED ERROR HANDLER ----------
     private ResponseEntity<Object> handleException(RuntimeException e) {
@@ -127,4 +200,24 @@ public class ProfileController {
                 .body(Map.of("status", "error",
                         "message", "Internal server error"));
     }
+
+    // ----- NATURAL LANGUAGE SEARCH -----
+    //    // 4. GET /api/profiles/search (Natural Language Query)
+    @GetMapping("/search")
+    public ResponseEntity<Map<String, Object>> searchProfiles(
+            @RequestParam("q") String query,
+            @RequestParam(required = false, defaultValue = "1") int page,
+            @RequestParam(required = false, defaultValue = "10") int limit) {
+
+        if (query == null || query.isBlank() || query.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "status", "error",
+                    "message", "Query parameter 'q' is required"
+            ));
+        }
+
+        Map<String, Object> response = profileService.searchProfiles(query, page, limit);
+        return ResponseEntity.ok(response);
+    }
 }
+
