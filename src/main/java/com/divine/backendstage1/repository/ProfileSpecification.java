@@ -8,9 +8,10 @@ import org.springframework.data.jpa.domain.Specification;
 public class ProfileSpecification {
 
     @Contract(pure = true)
-    public static @NotNull Specification<Profile> hasGender(String gender) {
-        return (root, query, cb) -> gender == null || gender.isBlank() ? null
-                : cb.equal(cb.lower(root.get("gender")), gender.toLowerCase());
+    public static Specification<Profile> hasGender(String gender) {
+        return (root, query, cb) ->
+                (gender == null || gender.isBlank() || gender.equals("unknown")) ? null
+                        : cb.equal(cb.lower(root.get("gender")), gender.toLowerCase());
     }
 
     @Contract(pure = true)
@@ -19,10 +20,10 @@ public class ProfileSpecification {
                 : cb.equal(cb.lower(root.get("ageGroup")), ageGroup.toLowerCase());
     }
 
-    @Contract(pure = true)
-    public static @NotNull Specification<Profile> hasCountryId(String countryId) {
-        return (root, query, cb) -> countryId == null || countryId.isBlank() ? null
-                : cb.equal(cb.lower(root.get("countryId")), countryId.toLowerCase());
+    public static Specification<Profile> hasCountryId(String countryId) {
+        return (root, query, cb) ->
+                (countryId == null || countryId.isBlank() || countryId.equals("unknown")) ? null
+                        : cb.equal(cb.lower(root.get("countryId")), countryId.toLowerCase());
     }
 
     @Contract(pure = true)

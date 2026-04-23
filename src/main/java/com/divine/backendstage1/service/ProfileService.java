@@ -309,6 +309,8 @@ public class ProfileService {
             put("limit", effectiveLimit);
             put("total", profilePage.getTotalElements());
             put("total_pages", profilePage.getTotalPages());
+            put("has_next", profilePage.hasNext());
+            put("has_previous", profilePage.hasPrevious());
             put("data", data);
         }};
     }
