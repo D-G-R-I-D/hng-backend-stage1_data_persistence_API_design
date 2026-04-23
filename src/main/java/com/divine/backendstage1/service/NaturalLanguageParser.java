@@ -271,7 +271,7 @@ public class NaturalLanguageParser {
 
         String lowerQuery = query.toLowerCase().trim();
 
-        // === 1. Gender — check BEFORE filler removal, use word boundaries with plurals ===
+        // === 1. Gender — before filler removal, with plurals ===
         boolean hasFemale = lowerQuery.matches(".*\\b(females?|women|woman|girls?)\\b.*");
         boolean hasMale = lowerQuery.matches(".*\\b(males?|men|man|boys?)\\b.*");
 
@@ -279,11 +279,10 @@ public class NaturalLanguageParser {
         if (hasMale && !hasFemale) gender = "male";
         else if (hasFemale && !hasMale) gender = "female";
 
-        // === 2. Age ranges — check BEFORE filler removal ===
+        // === 2. Age ranges — before filler removal ===
         Integer minAge = null;
         Integer maxAge = null;
 
-        // between X and Y
         Matcher betweenMatcher = Pattern.compile(
                 "(?:between|aged?)\\s*(\\d+)\\s*(?:and|to|-)\\s*(\\d+)",
                 Pattern.CASE_INSENSITIVE).matcher(lowerQuery);
@@ -292,7 +291,6 @@ public class NaturalLanguageParser {
             maxAge = Integer.parseInt(betweenMatcher.group(2));
         }
 
-        // above/over X
         Matcher aboveMatcher = Pattern.compile(
                 "(?:above|over|older than|greater than|>)\\s*(\\d+)",
                 Pattern.CASE_INSENSITIVE).matcher(lowerQuery);
@@ -300,7 +298,6 @@ public class NaturalLanguageParser {
             minAge = Integer.parseInt(aboveMatcher.group(1));
         }
 
-        // below/under X
         Matcher belowMatcher = Pattern.compile(
                 "(?:below|under|younger than|less than|<)\\s*(\\d+)",
                 Pattern.CASE_INSENSITIVE).matcher(lowerQuery);
@@ -308,7 +305,6 @@ public class NaturalLanguageParser {
             maxAge = Integer.parseInt(belowMatcher.group(1)) - 1;
         }
 
-        // young/youth
         if (lowerQuery.matches(".*\\b(young|youth|youngster|youngish|younger)\\b.*")) {
             if (minAge == null) minAge = 16;
             if (maxAge == null) maxAge = 24;
@@ -341,7 +337,7 @@ public class NaturalLanguageParser {
                 .findFirst()
                 .orElse(null);
 
-        // === 5. Validate — nothing found ===
+        // === 5. Nothing found ===
         if (gender == null && ageGroup == null && countryId == null
                 && minAge == null && maxAge == null) {
             return null;

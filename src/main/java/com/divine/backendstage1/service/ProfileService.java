@@ -282,6 +282,7 @@ public class ProfileService {
         Sort sort = switch (sortBy != null ? sortBy.toLowerCase() : "created_at") {
             case "age" -> Sort.by(direction, "age");
             case "gender_probability" -> Sort.by(direction, "genderProbability");
+            case "created_at" -> Sort.by(direction, "createdAt");
             default -> Sort.by(direction, "createdAt");
         };
 
@@ -430,6 +431,7 @@ public class ProfileService {
         data.put("age_group", p.getAgeGroup());
         data.put("country_id", p.getCountryId());
         data.put("country_name", p.getCountryName());
+        data.put("country_probability", p.getCountryProbability()); // ADD THIS
         data.put("created_at", p.getCreatedAt().toString());
         return data;
     }
