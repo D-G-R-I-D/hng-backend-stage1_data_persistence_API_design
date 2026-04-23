@@ -11,8 +11,11 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import com.divine.backendstage1.service.NaturalLanguageParser;
+import com.divine.backendstage1.repository.ProfileSpecification;
+import static com.divine.backendstage1.repository.ProfileSpecification.*;
 
 import java.time.Instant;
 import java.util.*;
@@ -273,7 +276,8 @@ public class ProfileService {
             int page, int limit) {
 
         limit = Math.min(limit, 50);
-        Sort.Direction direction = "desc".equalsIgnoreCase(order) ? Sort.Direction.DESC : Sort.Direction.ASC;
+        Sort.Direction direction = "desc".equalsIgnoreCase(order)
+                ? Sort.Direction.DESC : Sort.Direction.ASC;
 
         Sort sort = switch (sortBy != null ? sortBy.toLowerCase() : "created_at") {
             case "age" -> Sort.by(direction, "age");
@@ -283,42 +287,24 @@ public class ProfileService {
 
         Pageable pageable = PageRequest.of(page - 1, limit, sort);
 
-//        Page<Profile> profilePage = profileRepository.findAllByGenderIgnoreCaseAndAgeGroupIgnoreCaseAndCountryIdIgnoreCaseAndAgeBetweenAndGenderProbabilityGreaterThanEqualAndCountryProbabilityGreaterThanEqual(
-//                gender, ageGroup, countryId,
-//                minAge != null ? minAge : 0,
-//                maxAge != null ? maxAge : 120,
-//                minGenderProb != null ? minGenderProb : 0.0,
-//                minCountryProb != null ? minCountryProb : 0.0,
-//                pageable);
+        Specification<Profile> spec = Specification
+                .where(hasGender(gender))
+                .and(hasAgeGroup(ageGroup))
+                .and(hasCountryId(countryId))
+                .and(minAge(minAge))
+                .and(maxAge(maxAge))
+                .and(minGenderProbability(minGenderProb))
+                .and(minCountryProbability(minCountryProb));
 
-        Page<Profile> profilePage;
-
-        boolean hasGender = gender != null && !gender.isBlank();
-        boolean hasAgeGroup = ageGroup != null && !ageGroup.isBlank();
-        boolean hasCountryId = countryId != null && !countryId.isBlank();
-
-        if (!hasGender && !hasAgeGroup && !hasCountryId && minAge == null && maxAge == null
-                && minGenderProb == null && minCountryProb == null) {
-            profilePage = profileRepository.findAll(pageable);
-        } else {
-            profilePage = profileRepository
-                    .findAllByGenderIgnoreCaseAndAgeGroupIgnoreCaseAndCountryIdIgnoreCaseAndAgeBetweenAndGenderProbabilityGreaterThanEqualAndCountryProbabilityGreaterThanEqual(
-                            hasGender ? gender : "%",
-                            hasAgeGroup ? ageGroup : "%",
-                            hasCountryId ? countryId : "%",
-                            minAge != null ? minAge : 0,
-                            maxAge != null ? maxAge : 120,
-                            minGenderProb != null ? minGenderProb : 0.0,
-                            minCountryProb != null ? minCountryProb : 0.0,
-                            pageable);
-        }
+        Page<Profile> profilePage = profileRepository.findAll(spec, pageable);
 
         return Map.of(
                 "status", "success",
                 "page", page,
                 "limit", limit,
                 "total", profilePage.getTotalElements(),
-                "data", profilePage.getContent().stream().map(this::formatProfileList).toList()
+                "data", profilePage.getContent().stream()
+                        .map(this::formatProfileList).toList()
         );
     }
 
