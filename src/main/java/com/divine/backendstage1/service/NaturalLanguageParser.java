@@ -128,15 +128,27 @@ public class NaturalLanguageParser {
         Integer maxAge = null;
 
         // === 1. Detect Gender ===
-        boolean b1 = lowerQuery.contains("female") || lowerQuery.contains("women") || lowerQuery.contains("woman") || lowerQuery.contains("girl") || lowerQuery.contains("girls");
-        if (lowerQuery.contains("male") || lowerQuery.contains("men") || lowerQuery.contains("man") || lowerQuery.contains("boy") || lowerQuery.contains("boys")) {
-            // Check if it's "male and female" or similar
-            if (b1) {
-                // Both genders - no filter
-            } else {
-                gender = "male";
-            }
-        } else if (b1) {
+//        boolean b1 = lowerQuery.contains("female") || lowerQuery.contains("women") || lowerQuery.contains("woman") || lowerQuery.contains("girl") || lowerQuery.contains("girls");
+//        if (lowerQuery.contains("male") || lowerQuery.contains("men") || lowerQuery.contains("man") || lowerQuery.contains("boy") || lowerQuery.contains("boys")) {
+//            // Check if it's "male and female" or similar
+//            if (b1) {
+//                // Both genders - no filter
+//            } else {
+//                gender = "male";
+//            }
+//        } else if (b1) {
+//            gender = "female";
+//        }
+
+        // === 1. Detect Gender ===
+        boolean hasFemale = lowerQuery.matches(".*\\b(female|women|woman|girl|girls)\\b.*");
+        boolean hasMale = lowerQuery.matches(".*\\b(male|men|man|boy|boys)\\b.*");
+
+        if (hasMale && hasFemale) {
+            // Both present - no gender filter
+        } else if (hasMale) {
+            gender = "male";
+        } else if (hasFemale) {
             gender = "female";
         }
 
