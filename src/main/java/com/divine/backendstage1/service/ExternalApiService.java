@@ -4,10 +4,12 @@ import com.divine.backendstage1.exception.ExternalApiException;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -15,13 +17,12 @@ import java.util.concurrent.CompletableFuture;
 @Service
 public class ExternalApiService {
 
-    private final RestClient restClient;
-
-    public ExternalApiService() {
-        this.restClient = RestClient.builder()
-                .requestFactory(new JdkClientHttpRequestFactory())
-                .build();
-    }
+    private final RestClient restClient = RestClient.builder()
+            .requestFactory(new SimpleClientHttpRequestFactory() {{
+                setConnectTimeout(Duration.ofSeconds(5));
+                setReadTimeout(Duration.ofSeconds(5));
+            }})
+            .build();
 
     private static final Map<Integer, String> ERROR_MESSAGES = Map.of(
             400, "API Rate limit or bad request!",

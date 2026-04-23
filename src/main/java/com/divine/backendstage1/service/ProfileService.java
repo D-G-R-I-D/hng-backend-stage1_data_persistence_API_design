@@ -153,7 +153,7 @@ public class ProfileService {
         Optional<Profile> existing = profileRepository.findByNameIgnoreCase(name);
         if (existing.isPresent()) {
             return Map.of(
-                    "status", "success",
+                    "status", "exists",   // use a different key so controller can detect it
                     "data", formatProfile(existing.get())
             );
         }
@@ -275,7 +275,7 @@ public class ProfileService {
             String sortBy, String order,
             int page, int limit) {
 
-        limit = Math.min(limit, 50);
+
         Sort.Direction direction = "desc".equalsIgnoreCase(order)
                 ? Sort.Direction.DESC : Sort.Direction.ASC;
 
@@ -296,26 +296,32 @@ public class ProfileService {
                 .and(minGenderProbability(minGenderProb))
                 .and(minCountryProbability(minCountryProb));
 
+        int effectiveLimit = Math.min(limit, 50);
         Page<Profile> profilePage = profileRepository.findAll(spec, pageable);
 
-        return Map.of(
-                "status", "success",
-                "page", page,
-                "limit", limit,
-                "total", profilePage.getTotalElements(),
-                "total_pages", profilePage.getTotalPages(),
-                "data", profilePage.getContent().stream()
-                        .map(this::formatProfileList).toList()
-        );
+        List<Map<String, Object>> data = profilePage.getContent().stream()
+                .map(this::formatProfileList)
+                .toList();
+
+        return new LinkedHashMap<>() {{
+            put("status", "success");
+            put("page", page);
+            put("limit", effectiveLimit);
+            put("total", profilePage.getTotalElements());
+            put("total_pages", profilePage.getTotalPages());
+            put("data", data);
+        }};
     }
 
     // ==================== NATURAL LANGUAGE SEARCH ====================
     public Map<String, Object> searchProfiles(String query, int page, int limit) {
-        // We'll create a separate parser class
         QueryFilters filters = naturalLanguageParser.parse(query);
 
-        if (filters == null) {
-            return Map.of("status", "error", "message", "Unable to interpret query");
+        if (filters == null || filters.isEmpty()) {
+            return Map.of(
+                    "status", "error",
+                    "message", "Unable to interpret query"
+            );
         }
 
         return getAllProfiles(
