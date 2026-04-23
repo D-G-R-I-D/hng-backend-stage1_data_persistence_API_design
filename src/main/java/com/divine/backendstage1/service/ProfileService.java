@@ -317,6 +317,8 @@ public class ProfileService {
 //    }
 //
 
+//
+
     public Map<String, Object> getAllProfiles(
             String gender, String ageGroup, String countryId,
             Integer minAge, Integer maxAge,
@@ -324,30 +326,28 @@ public class ProfileService {
             String sortBy, String order,
             int page, int limit) {
 
-        // Clamp values
         if (page < 1) page = 1;
         if (limit < 1) limit = 10;
         if (limit > 50) limit = 50;
 
-        // Direction
         Sort.Direction direction = (order != null && order.equalsIgnoreCase("desc"))
                 ? Sort.Direction.DESC
                 : Sort.Direction.ASC;
 
-        // Sort field — map external name to entity field name
         String sortField;
         if (sortBy == null || sortBy.isBlank()) {
             sortField = "createdAt";
         } else {
             sortField = switch (sortBy.toLowerCase().trim()) {
-                case "age"                -> "age";
+                case "age" -> "age";
                 case "gender_probability" -> "genderProbability";
-                case "created_at"         -> "createdAt";
-                default                   -> "createdAt";
+                case "created_at" -> "createdAt";
+                default -> "createdAt";
             };
         }
 
-        Pageable pageable = PageRequest.of(page - 1, limit, Sort.by(direction, sortField));
+        Sort sort = Sort.by(direction, sortField);
+        Pageable pageable = PageRequest.of(page - 1, limit, sort);
 
         Specification<Profile> spec = Specification
                 .where(ProfileSpecification.hasGender(gender))
@@ -373,6 +373,24 @@ public class ProfileService {
     }
 
     // ==================== NATURAL LANGUAGE SEARCH ====================
+//    public Map<String, Object> searchProfiles(String query, int page, int limit) {
+//        QueryFilters filters = naturalLanguageParser.parse(query);
+//
+//        if (filters == null || filters.isEmpty()) {
+//            return Map.of(
+//                    "status", "error",
+//                    "message", "Unable to interpret query"
+//            );
+//        }
+//
+//        return getAllProfiles(
+//                filters.gender(), filters.ageGroup(), filters.countryId(),
+//                filters.minAge(), filters.maxAge(),
+//                filters.minGenderProb(), filters.minCountryProb(),
+//                "created_at", "desc", page, limit
+//        );
+//    }
+
     public Map<String, Object> searchProfiles(String query, int page, int limit) {
         QueryFilters filters = naturalLanguageParser.parse(query);
 
@@ -476,9 +494,24 @@ public class ProfileService {
 //        return data;
 //    }
 
-    private @NotNull Map<String, Object> formatProfileList(@NotNull Profile p) {
+//    private @NotNull Map<String, Object> formatProfileList(@NotNull Profile p) {
+//        Map<String, Object> data = new LinkedHashMap<>();
+//        assert p.getId() != null;
+//        data.put("id", p.getId().toString());
+//        data.put("name", p.getName());
+//        data.put("gender", p.getGender());
+//        data.put("gender_probability", p.getGenderProbability());
+//        data.put("age", p.getAge());
+//        data.put("age_group", p.getAgeGroup());
+//        data.put("country_id", p.getCountryId());
+//        data.put("country_name", p.getCountryName());
+//        data.put("country_probability", p.getCountryProbability()); // ADD THIS
+//        data.put("created_at", p.getCreatedAt().toString());
+//        return data;
+//    }
+
+    private Map<String, Object> formatProfileList(Profile p) {
         Map<String, Object> data = new LinkedHashMap<>();
-        assert p.getId() != null;
         data.put("id", p.getId().toString());
         data.put("name", p.getName());
         data.put("gender", p.getGender());
@@ -487,7 +520,7 @@ public class ProfileService {
         data.put("age_group", p.getAgeGroup());
         data.put("country_id", p.getCountryId());
         data.put("country_name", p.getCountryName());
-        data.put("country_probability", p.getCountryProbability()); // ADD THIS
+        data.put("country_probability", p.getCountryProbability());
         data.put("created_at", p.getCreatedAt().toString());
         return data;
     }
