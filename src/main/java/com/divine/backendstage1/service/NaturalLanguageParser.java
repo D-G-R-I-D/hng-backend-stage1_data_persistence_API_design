@@ -267,7 +267,7 @@ public class NaturalLanguageParser {
     private String removeFillerWords(String query) {
         // Remove common filler words
         return query
-                .replaceAll("\\b(i want|i need|give me|show me|find|get|fetch|list|display|all the|all|the|a|an|of|for|in|that|with|and|or)\\b", " ")
+                .replaceAll("\\b(i want|i need|give me|show me|find|get|fetch|list|display|all the|all|the|a|an|of|for|in|that|with|or)\\b", " ")
                 .replaceAll("\\s+", " ")
                 .trim();
     }
