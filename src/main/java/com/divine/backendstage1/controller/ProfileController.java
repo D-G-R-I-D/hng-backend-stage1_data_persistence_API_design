@@ -215,7 +215,6 @@ public class ProfileController {
 
         Map<String, Object> response = profileService.searchProfiles(query, page, limit);
 
-        // Return 400 if query couldn't be interpreted
         if ("error".equals(response.get("status"))) {
             return ResponseEntity.badRequest().body(response);
         }

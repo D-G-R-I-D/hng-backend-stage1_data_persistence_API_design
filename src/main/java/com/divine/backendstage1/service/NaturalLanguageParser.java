@@ -141,8 +141,8 @@ public class NaturalLanguageParser {
 //        }
 
         // === 1. Detect Gender ===
-        boolean hasFemale = lowerQuery.matches(".*\\b(female|women|woman|girl|girls)\\b.*");
-        boolean hasMale = lowerQuery.matches(".*\\b(male|men|man|boy|boys)\\b.*");
+        boolean hasFemale = lowerQuery.matches(".*\\b(females?|women|woman|girl|girls?)\\b.*");
+        boolean hasMale = lowerQuery.matches(".*\\b(males?|men|man|boy|boys?)\\b.*");
 
         if (hasMale && hasFemale) {
             // Both present - no gender filter

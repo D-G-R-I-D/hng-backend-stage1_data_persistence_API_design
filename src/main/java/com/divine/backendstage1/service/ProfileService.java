@@ -419,13 +419,16 @@ public class ProfileService {
 
     private @NotNull Map<String, Object> formatProfileList(@NotNull Profile p) {
         Map<String, Object> data = new LinkedHashMap<>();
+        assert p.getId() != null;
         data.put("id", p.getId().toString());
         data.put("name", p.getName());
         data.put("gender", p.getGender());
+        data.put("gender_probability", p.getGenderProbability());
         data.put("age", p.getAge());
         data.put("age_group", p.getAgeGroup());
         data.put("country_id", p.getCountryId());
-        data.put( "country_name", p.getCountryName());
+        data.put("country_name", p.getCountryName());
+        data.put("created_at", p.getCreatedAt().toString());
         return data;
     }
 }
