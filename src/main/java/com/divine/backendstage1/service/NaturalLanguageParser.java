@@ -353,37 +353,23 @@ public class NaturalLanguageParser {
 
         String q = query.toLowerCase().trim();
 
-        // ── 1. GENDER ────────────────────────────────────────────────────
-        // Check female words FIRST and explicitly
-        // Use strict patterns that won't cross-match
-        boolean hasFemale = containsWord(q, "female")
-                || containsWord(q, "females")
-                || containsWord(q, "woman")
-                || containsWord(q, "women")
-                || containsWord(q, "girl")
-                || containsWord(q, "girls");
+        // ── 1. GENDER ────────────────────────────────────────────────────────
+        // Strip female words first, then check for male words in what remains
+        // This prevents "female" from being counted as containing "male"
 
-        boolean hasMaleWord = containsWord(q, "male")
-                || containsWord(q, "males")
-                || containsWord(q, "man")
-                || containsWord(q, "men")
-                || containsWord(q, "boy")
-                || containsWord(q, "boys");
+        boolean hasFemale = Pattern.compile(
+                        "\\b(female|females|woman|women|girl|girls)\\b")
+                .matcher(q).find();
 
-        // "male" inside "female" should NOT count as male
-        // We need to strip "female/females" from query before checking male
-        String qWithoutFemale = q
-                .replaceAll("\\bfemales?\\b", "")
-                .replaceAll("\\bwom[ae]n\\b", "")
-                .replaceAll("\\bgirls?\\b", "")
-                .trim();
+        // Remove all female-related words before checking for male
+        String qStrippedFemale = q
+                .replaceAll("\\bfemales?\\b", "REMOVED")
+                .replaceAll("\\bwom[ae]n\\b", "REMOVED")
+                .replaceAll("\\bgirls?\\b", "REMOVED");
 
-        boolean hasMale = containsWord(qWithoutFemale, "male")
-                || containsWord(qWithoutFemale, "males")
-                || containsWord(qWithoutFemale, "man")
-                || containsWord(qWithoutFemale, "men")
-                || containsWord(qWithoutFemale, "boy")
-                || containsWord(qWithoutFemale, "boys");
+        boolean hasMale = Pattern.compile(
+                        "\\b(male|males|man|men|boy|boys)\\b")
+                .matcher(qStrippedFemale).find();
 
         String gender = null;
         if (hasMale && hasFemale) {
@@ -394,7 +380,7 @@ public class NaturalLanguageParser {
             gender = "female";
         }
 
-        // ── 2. AGE RANGES ─────────────────────────────────────────────────
+        // ── 2. AGE RANGES ────────────────────────────────────────────────────
         Integer minAge = null;
         Integer maxAge = null;
 
@@ -410,7 +396,7 @@ public class NaturalLanguageParser {
         // "above X" / "over X" / "older than X" / "greater than X"
         if (minAge == null) {
             Matcher aboveMatcher = Pattern.compile(
-                    "(?:above|over|older\\s+than|greater\\s+than)\\s+(\\d+)",
+                    "\\b(?:above|over|older\\s+than|greater\\s+than)\\s+(\\d+)",
                     Pattern.CASE_INSENSITIVE).matcher(q);
             if (aboveMatcher.find()) {
                 minAge = Integer.parseInt(aboveMatcher.group(1));
@@ -420,44 +406,44 @@ public class NaturalLanguageParser {
         // "below X" / "under X" / "younger than X" / "less than X"
         if (maxAge == null) {
             Matcher belowMatcher = Pattern.compile(
-                    "(?:below|under|younger\\s+than|less\\s+than)\\s+(\\d+)",
+                    "\\b(?:below|under|younger\\s+than|less\\s+than)\\s+(\\d+)",
                     Pattern.CASE_INSENSITIVE).matcher(q);
             if (belowMatcher.find()) {
                 maxAge = Integer.parseInt(belowMatcher.group(1));
             }
         }
 
-        // "young" → ages 16-24 (only if no explicit age range given)
-        if (containsWord(q, "young") && minAge == null && maxAge == null) {
+        // "young" → 16–24 only if no other range set
+        if (Pattern.compile("\\byoung\\b").matcher(q).find()
+                && minAge == null && maxAge == null) {
             minAge = 16;
             maxAge = 24;
         }
 
-        // ── 3. AGE GROUP ──────────────────────────────────────────────────
+        // ── 3. AGE GROUP ─────────────────────────────────────────────────────
         String ageGroup = null;
-        if (containsWord(q, "child") || containsWord(q, "children")
-                || containsWord(q, "kid") || containsWord(q, "kids")) {
+        if (Pattern.compile("\\b(child|children|kid|kids)\\b").matcher(q).find()) {
             ageGroup = "child";
-        } else if (containsWord(q, "teenager") || containsWord(q, "teenagers")
-                || containsWord(q, "teen") || containsWord(q, "teens")
-                || containsWord(q, "adolescent")) {
+        } else if (Pattern.compile("\\b(teen|teens|teenager|teenagers|adolescent)\\b")
+                .matcher(q).find()) {
             ageGroup = "teenager";
-        } else if (containsWord(q, "adult") || containsWord(q, "adults")) {
+        } else if (Pattern.compile("\\b(adult|adults)\\b").matcher(q).find()) {
             ageGroup = "adult";
-        } else if (containsWord(q, "senior") || containsWord(q, "seniors")
-                || containsWord(q, "elderly")) {
+        } else if (Pattern.compile("\\b(senior|seniors|elderly)\\b").matcher(q).find()) {
             ageGroup = "senior";
         }
 
-        // ── 4. COUNTRY — longest match first ──────────────────────────────
+        // ── 4. COUNTRY — longest match first ─────────────────────────────────
         String countryId = COUNTRY_MAP.entrySet().stream()
                 .sorted((a, b) -> b.getKey().length() - a.getKey().length())
-                .filter(e -> containsPhrase(q, e.getKey()))
+                .filter(e -> Pattern.compile(
+                        "\\b" + Pattern.quote(e.getKey()) + "\\b",
+                        Pattern.CASE_INSENSITIVE).matcher(q).find())
                 .map(Map.Entry::getValue)
                 .findFirst()
                 .orElse(null);
 
-        // ── 5. Nothing recognized → return null ───────────────────────────
+        // ── 5. Nothing recognized ─────────────────────────────────────────────
         if (gender == null && ageGroup == null && countryId == null
                 && minAge == null && maxAge == null) {
             return null;
@@ -465,6 +451,123 @@ public class NaturalLanguageParser {
 
         return new QueryFilters(gender, ageGroup, countryId, minAge, maxAge, null, null);
     }
+//    public QueryFilters parse(String query) {
+//        if (query == null || query.trim().isEmpty()) return null;
+//
+//        String q = query.toLowerCase().trim();
+//
+//        // ── 1. GENDER ────────────────────────────────────────────────────
+//        // Check female words FIRST and explicitly
+//        // Use strict patterns that won't cross-match
+//        boolean hasFemale = containsWord(q, "female")
+//                || containsWord(q, "females")
+//                || containsWord(q, "woman")
+//                || containsWord(q, "women")
+//                || containsWord(q, "girl")
+//                || containsWord(q, "girls");
+//
+//        boolean hasMaleWord = containsWord(q, "male")
+//                || containsWord(q, "males")
+//                || containsWord(q, "man")
+//                || containsWord(q, "men")
+//                || containsWord(q, "boy")
+//                || containsWord(q, "boys");
+//
+//        // "male" inside "female" should NOT count as male
+//        // We need to strip "female/females" from query before checking male
+//        String qWithoutFemale = q
+//                .replaceAll("\\bfemales?\\b", "")
+//                .replaceAll("\\bwom[ae]n\\b", "")
+//                .replaceAll("\\bgirls?\\b", "")
+//                .trim();
+//
+//        boolean hasMale = containsWord(qWithoutFemale, "male")
+//                || containsWord(qWithoutFemale, "males")
+//                || containsWord(qWithoutFemale, "man")
+//                || containsWord(qWithoutFemale, "men")
+//                || containsWord(qWithoutFemale, "boy")
+//                || containsWord(qWithoutFemale, "boys");
+//
+//        String gender = null;
+//        if (hasMale && hasFemale) {
+//            gender = null; // both → no filter
+//        } else if (hasMale) {
+//            gender = "male";
+//        } else if (hasFemale) {
+//            gender = "female";
+//        }
+//
+//        // ── 2. AGE RANGES ─────────────────────────────────────────────────
+//        Integer minAge = null;
+//        Integer maxAge = null;
+//
+//        // "between X and Y"
+//        Matcher betweenMatcher = Pattern.compile(
+//                "between\\s+(\\d+)\\s+and\\s+(\\d+)",
+//                Pattern.CASE_INSENSITIVE).matcher(q);
+//        if (betweenMatcher.find()) {
+//            minAge = Integer.parseInt(betweenMatcher.group(1));
+//            maxAge = Integer.parseInt(betweenMatcher.group(2));
+//        }
+//
+//        // "above X" / "over X" / "older than X" / "greater than X"
+//        if (minAge == null) {
+//            Matcher aboveMatcher = Pattern.compile(
+//                    "(?:above|over|older\\s+than|greater\\s+than)\\s+(\\d+)",
+//                    Pattern.CASE_INSENSITIVE).matcher(q);
+//            if (aboveMatcher.find()) {
+//                minAge = Integer.parseInt(aboveMatcher.group(1));
+//            }
+//        }
+//
+//        // "below X" / "under X" / "younger than X" / "less than X"
+//        if (maxAge == null) {
+//            Matcher belowMatcher = Pattern.compile(
+//                    "(?:below|under|younger\\s+than|less\\s+than)\\s+(\\d+)",
+//                    Pattern.CASE_INSENSITIVE).matcher(q);
+//            if (belowMatcher.find()) {
+//                maxAge = Integer.parseInt(belowMatcher.group(1));
+//            }
+//        }
+//
+//        // "young" → ages 16-24 (only if no explicit age range given)
+//        if (containsWord(q, "young") && minAge == null && maxAge == null) {
+//            minAge = 16;
+//            maxAge = 24;
+//        }
+//
+//        // ── 3. AGE GROUP ──────────────────────────────────────────────────
+//        String ageGroup = null;
+//        if (containsWord(q, "child") || containsWord(q, "children")
+//                || containsWord(q, "kid") || containsWord(q, "kids")) {
+//            ageGroup = "child";
+//        } else if (containsWord(q, "teenager") || containsWord(q, "teenagers")
+//                || containsWord(q, "teen") || containsWord(q, "teens")
+//                || containsWord(q, "adolescent")) {
+//            ageGroup = "teenager";
+//        } else if (containsWord(q, "adult") || containsWord(q, "adults")) {
+//            ageGroup = "adult";
+//        } else if (containsWord(q, "senior") || containsWord(q, "seniors")
+//                || containsWord(q, "elderly")) {
+//            ageGroup = "senior";
+//        }
+//
+//        // ── 4. COUNTRY — longest match first ──────────────────────────────
+//        String countryId = COUNTRY_MAP.entrySet().stream()
+//                .sorted((a, b) -> b.getKey().length() - a.getKey().length())
+//                .filter(e -> containsPhrase(q, e.getKey()))
+//                .map(Map.Entry::getValue)
+//                .findFirst()
+//                .orElse(null);
+//
+//        // ── 5. Nothing recognized → return null ───────────────────────────
+//        if (gender == null && ageGroup == null && countryId == null
+//                && minAge == null && maxAge == null) {
+//            return null;
+//        }
+//
+//        return new QueryFilters(gender, ageGroup, countryId, minAge, maxAge, null, null);
+//    }
 
     /**
      * Check if a single word exists with word boundaries.

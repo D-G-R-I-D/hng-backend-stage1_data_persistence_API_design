@@ -222,6 +222,28 @@ public class ProfileController {
 //        return ResponseEntity.ok(response);
 //    }
 
+//    @GetMapping("/search")
+//    public ResponseEntity<Map<String, Object>> searchProfiles(
+//            @RequestParam(required = false) String q,
+//            @RequestParam(required = false, defaultValue = "1") int page,
+//            @RequestParam(required = false, defaultValue = "10") int limit) {
+//
+//        if (q == null || q.isBlank()) {
+//            return ResponseEntity.badRequest().body(Map.of(
+//                    "status", "error",
+//                    "message", "Query parameter 'q' is required"
+//            ));
+//        }
+//
+//        Map<String, Object> response = profileService.searchProfiles(q.trim(), page, limit);
+//
+//        if ("error".equals(response.get("status"))) {
+//            return ResponseEntity.status(422).body(response);
+//        }
+//
+//        return ResponseEntity.ok(response);
+//    }
+
     @GetMapping("/search")
     public ResponseEntity<Map<String, Object>> searchProfiles(
             @RequestParam(required = false) String q,
@@ -234,6 +256,10 @@ public class ProfileController {
                     "message", "Query parameter 'q' is required"
             ));
         }
+
+        if (page < 1) page = 1;
+        if (limit < 1) limit = 10;
+        if (limit > 50) limit = 50;
 
         Map<String, Object> response = profileService.searchProfiles(q.trim(), page, limit);
 
