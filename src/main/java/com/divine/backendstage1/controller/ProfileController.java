@@ -200,23 +200,45 @@ public class ProfileController {
 
     // ----- NATURAL LANGUAGE SEARCH -----
     //    // 4. GET /api/profiles/search (Natural Language Query)
+//    @GetMapping("/search")
+//    public ResponseEntity<Map<String, Object>> searchProfiles(
+//            @RequestParam(required = false) String q,
+//            @RequestParam(required = false, defaultValue = "1") int page,
+//            @RequestParam(required = false, defaultValue = "10") int limit) {
+//
+//        if (q == null || q.isBlank()) {
+//            return ResponseEntity.badRequest().body(Map.of(
+//                    "status", "error",
+//                    "message", "Query parameter 'q' is required"
+//            ));
+//        }
+//
+//        Map<String, Object> response = profileService.searchProfiles(q, page, limit);
+//
+//        if ("error".equals(response.get("status"))) {
+//            return ResponseEntity.badRequest().body(response);
+//        }
+//
+//        return ResponseEntity.ok(response);
+//    }
+
     @GetMapping("/search")
     public ResponseEntity<Map<String, Object>> searchProfiles(
-            @RequestParam("q") String query,
+            @RequestParam(required = false) String q,
             @RequestParam(required = false, defaultValue = "1") int page,
             @RequestParam(required = false, defaultValue = "10") int limit) {
 
-        if (query == null || query.isBlank()) {
+        if (q == null || q.isBlank()) {
             return ResponseEntity.badRequest().body(Map.of(
                     "status", "error",
                     "message", "Query parameter 'q' is required"
             ));
         }
 
-        Map<String, Object> response = profileService.searchProfiles(query, page, limit);
+        Map<String, Object> response = profileService.searchProfiles(q.trim(), page, limit);
 
         if ("error".equals(response.get("status"))) {
-            return ResponseEntity.badRequest().body(response);
+            return ResponseEntity.status(422).body(response);
         }
 
         return ResponseEntity.ok(response);

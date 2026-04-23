@@ -35,10 +35,10 @@ public interface ProfileRepository extends JpaRepository<Profile, UUID>,
     List<Profile> findByGenderIgnoreCaseAndCountryIdIgnoreCaseAndAgeGroupIgnoreCase(
             String gender, String countryId, String ageGroup);
 
-    // Advanced filtering + pagination
-    Page<Profile> findAllByGenderIgnoreCaseAndAgeGroupIgnoreCaseAndCountryIdIgnoreCaseAndAgeBetweenAndGenderProbabilityGreaterThanEqualAndCountryProbabilityGreaterThanEqual(
-            String gender, String ageGroup, String countryId, Integer minAge, Integer maxAge,
-            Double minGenderProb, Double minCountryProb, Pageable pageable);
+//    // Advanced filtering + pagination
+//    Page<Profile> findAllByGenderIgnoreCaseAndAgeGroupIgnoreCaseAndCountryIdIgnoreCaseAndAgeBetweenAndGenderProbabilityGreaterThanEqualAndCountryProbabilityGreaterThanEqual(
+//            String gender, String ageGroup, String countryId, Integer minAge, Integer maxAge,
+//            Double minGenderProb, Double minCountryProb, Pageable pageable);
 
     // You can add more specific methods if needed, but one powerful method is better
 }

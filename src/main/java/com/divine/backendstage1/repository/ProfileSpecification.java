@@ -20,10 +20,21 @@ public class ProfileSpecification {
                 : cb.equal(cb.lower(root.get("ageGroup")), ageGroup.toLowerCase());
     }
 
+//    public static Specification<Profile> hasCountryId(String countryId) {
+//        return (root, query, cb) ->
+//                (countryId == null || countryId.isBlank() || countryId.equals("unknown")) ? null
+//                        : cb.equal(cb.lower(root.get("countryId")), countryId.toLowerCase());
+//    }
+
     public static Specification<Profile> hasCountryId(String countryId) {
-        return (root, query, cb) ->
-                (countryId == null || countryId.isBlank() || countryId.equals("unknown")) ? null
-                        : cb.equal(cb.lower(root.get("countryId")), countryId.toLowerCase());
+        return (root, query, cb) -> {
+            if (countryId == null || countryId.isBlank() || countryId.equals("unknown")) return null;
+            // stored as uppercase e.g. "NG", compare uppercase
+            return cb.equal(
+                    cb.upper(root.get("countryId")),
+                    countryId.toUpperCase()
+            );
+        };
     }
 
     @Contract(pure = true)

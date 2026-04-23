@@ -268,6 +268,55 @@ public class ProfileService {
 //    }
 
     // ==================== ADVANCED GET ALL ====================
+//    public Map<String, Object> getAllProfiles(
+//            String gender, String ageGroup, String countryId,
+//            Integer minAge, Integer maxAge,
+//            Double minGenderProb, Double minCountryProb,
+//            String sortBy, String order,
+//            int page, int limit) {
+//
+//
+//        Sort.Direction direction = "desc".equalsIgnoreCase(order)
+//                ? Sort.Direction.DESC : Sort.Direction.ASC;
+//
+//        Sort sort = switch (sortBy != null ? sortBy.toLowerCase() : "created_at") {
+//            case "age" -> Sort.by(direction, "age");
+//            case "gender_probability" -> Sort.by(direction, "genderProbability");
+//            case "created_at" -> Sort.by(direction, "createdAt");
+//            default -> Sort.by(direction, "createdAt");
+//        };
+//
+//        Pageable pageable = PageRequest.of(page - 1, limit, sort);
+//
+//        Specification<Profile> spec = Specification
+//                .where(hasGender(gender))
+//                .and(hasAgeGroup(ageGroup))
+//                .and(hasCountryId(countryId))
+//                .and(minAge(minAge))
+//                .and(maxAge(maxAge))
+//                .and(minGenderProbability(minGenderProb))
+//                .and(minCountryProbability(minCountryProb));
+//
+//        int effectiveLimit = Math.min(limit, 50);
+//        Page<Profile> profilePage = profileRepository.findAll(spec, pageable);
+//
+//        List<Map<String, Object>> data = profilePage.getContent().stream()
+//                .map(this::formatProfileList)
+//                .toList();
+//
+//        return new LinkedHashMap<>() {{
+//            put("status", "success");
+//            put("page", page);
+//            put("limit", effectiveLimit);
+//            put("total", profilePage.getTotalElements());
+//            put("total_pages", profilePage.getTotalPages());
+//            put("has_next", profilePage.hasNext());
+//            put("has_previous", profilePage.hasPrevious());
+//            put("data", data);
+//        }};
+//    }
+//
+
     public Map<String, Object> getAllProfiles(
             String gender, String ageGroup, String countryId,
             Integer minAge, Integer maxAge,
@@ -275,45 +324,52 @@ public class ProfileService {
             String sortBy, String order,
             int page, int limit) {
 
+        // Clamp values
+        if (page < 1) page = 1;
+        if (limit < 1) limit = 10;
+        if (limit > 50) limit = 50;
 
-        Sort.Direction direction = "desc".equalsIgnoreCase(order)
-                ? Sort.Direction.DESC : Sort.Direction.ASC;
+        // Direction
+        Sort.Direction direction = (order != null && order.equalsIgnoreCase("desc"))
+                ? Sort.Direction.DESC
+                : Sort.Direction.ASC;
 
-        Sort sort = switch (sortBy != null ? sortBy.toLowerCase() : "created_at") {
-            case "age" -> Sort.by(direction, "age");
-            case "gender_probability" -> Sort.by(direction, "genderProbability");
-            case "created_at" -> Sort.by(direction, "createdAt");
-            default -> Sort.by(direction, "createdAt");
-        };
+        // Sort field — map external name to entity field name
+        String sortField;
+        if (sortBy == null || sortBy.isBlank()) {
+            sortField = "createdAt";
+        } else {
+            sortField = switch (sortBy.toLowerCase().trim()) {
+                case "age"                -> "age";
+                case "gender_probability" -> "genderProbability";
+                case "created_at"         -> "createdAt";
+                default                   -> "createdAt";
+            };
+        }
 
-        Pageable pageable = PageRequest.of(page - 1, limit, sort);
+        Pageable pageable = PageRequest.of(page - 1, limit, Sort.by(direction, sortField));
 
         Specification<Profile> spec = Specification
-                .where(hasGender(gender))
-                .and(hasAgeGroup(ageGroup))
-                .and(hasCountryId(countryId))
-                .and(minAge(minAge))
-                .and(maxAge(maxAge))
-                .and(minGenderProbability(minGenderProb))
-                .and(minCountryProbability(minCountryProb));
+                .where(ProfileSpecification.hasGender(gender))
+                .and(ProfileSpecification.hasAgeGroup(ageGroup))
+                .and(ProfileSpecification.hasCountryId(countryId))
+                .and(ProfileSpecification.minAge(minAge))
+                .and(ProfileSpecification.maxAge(maxAge))
+                .and(ProfileSpecification.minGenderProbability(minGenderProb))
+                .and(ProfileSpecification.minCountryProbability(minCountryProb));
 
-        int effectiveLimit = Math.min(limit, 50);
         Page<Profile> profilePage = profileRepository.findAll(spec, pageable);
 
-        List<Map<String, Object>> data = profilePage.getContent().stream()
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("status", "success");
+        result.put("page", page);
+        result.put("limit", limit);
+        result.put("total", profilePage.getTotalElements());
+        result.put("data", profilePage.getContent().stream()
                 .map(this::formatProfileList)
-                .toList();
+                .toList());
 
-        return new LinkedHashMap<>() {{
-            put("status", "success");
-            put("page", page);
-            put("limit", effectiveLimit);
-            put("total", profilePage.getTotalElements());
-            put("total_pages", profilePage.getTotalPages());
-            put("has_next", profilePage.hasNext());
-            put("has_previous", profilePage.hasPrevious());
-            put("data", data);
-        }};
+        return result;
     }
 
     // ==================== NATURAL LANGUAGE SEARCH ====================
