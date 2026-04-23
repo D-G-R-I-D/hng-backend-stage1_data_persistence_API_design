@@ -209,7 +209,7 @@ public class ProfileController {
             @RequestParam(required = false, defaultValue = "1") int page,
             @RequestParam(required = false, defaultValue = "10") int limit) {
 
-        if (query == null || query.isBlank() || query.trim().isEmpty()) {
+        if (query == null || query.isBlank()) {
             return ResponseEntity.badRequest().body(Map.of(
                     "status", "error",
                     "message", "Query parameter 'q' is required"
@@ -217,6 +217,12 @@ public class ProfileController {
         }
 
         Map<String, Object> response = profileService.searchProfiles(query, page, limit);
+
+        // Return 400 if query couldn't be interpreted
+        if ("error".equals(response.get("status"))) {
+            return ResponseEntity.badRequest().body(response);
+        }
+
         return ResponseEntity.ok(response);
     }
 }

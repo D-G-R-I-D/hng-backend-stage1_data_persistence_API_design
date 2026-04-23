@@ -255,17 +255,17 @@ public class ProfileService {
     }
 
     // ---------- GET ALL ----------
-    public Map<String, Object> getAllProfiles(String gender, String countryId, String ageGroup) {
-        List<Profile> profiles = findByFilters(gender, countryId, ageGroup);
-
-        return Map.of(
-                "status", "success",
-                "count", profiles.size(),
-                "data", profiles.stream()
-                        .map(this::formatProfileList)
-                        .toList()
-        );
-    }
+//    public Map<String, Object> getAllProfiles(String gender, String countryId, String ageGroup) {
+//        List<Profile> profiles = findByFilters(gender, countryId, ageGroup);
+//
+//        return Map.of(
+//                "status", "success",
+//                "count", profiles.size(),
+//                "data", profiles.stream()
+//                        .map(this::formatProfileList)
+//                        .toList()
+//        );
+//    }
 
     // ==================== ADVANCED GET ALL ====================
     public Map<String, Object> getAllProfiles(
@@ -303,6 +303,7 @@ public class ProfileService {
                 "page", page,
                 "limit", limit,
                 "total", profilePage.getTotalElements(),
+                "total_pages", profilePage.getTotalPages(),
                 "data", profilePage.getContent().stream()
                         .map(this::formatProfileList).toList()
         );
