@@ -82,6 +82,30 @@ public class NaturalLanguageParser {
         put("colombia", "CO");
         put("chile", "CL");
         put("peru", "PE");
+        put("pakistan", "PK");
+        put("bangladesh", "BD");
+        put("indonesia", "ID");
+        put("philippines", "PH");
+        put("vietnam", "VN");
+        put("thailand", "TH");
+        put("south korea", "KR");
+        put("turkey", "TR");
+        put("saudi arabia", "SA");
+        put("united arab emirates", "AE");
+        put("malaysia", "MY");
+        put("ukraine", "UA");
+        put("czech republic", "CZ");
+        put("romania", "RO");
+        put("hungary", "HU");
+        put("greece", "GR");
+        put("austria", "AT");
+        put("ireland", "IE");
+        put("venezuela", "VE");
+        put("ecuador", "EC");
+        put("bolivia", "BO");
+        put("paraguay", "PY");
+        put("uruguay", "UY");
+        put("new zealand", "NZ");
     }};
 
     private static final Set<String> AGE_GROUPS = Set.of("child", "children", "teenager", "teenagers", "teen", "teens", "adult", "adults", "senior", "seniors", "elderly", "old");
@@ -163,24 +187,47 @@ public class NaturalLanguageParser {
         }
 
         // === 3. Detect Country ===
-        for (Map.Entry<String, String> entry : COUNTRY_MAP.entrySet()) {
-            if (lowerQuery.contains(entry.getKey())) {
-                countryId = entry.getValue();
-                break;
-            }
-        }
 
-        // === 4. Detect "from" keyword for country ===
+        // === 3. Detect Country ===
+        // Sort by key length descending so "nigeria" matches before "niger"
+        String finalLowerQuery = lowerQuery;
+        countryId = COUNTRY_MAP.entrySet().stream()
+                .sorted((a, b) -> b.getKey().length() - a.getKey().length())
+                .filter(entry -> finalLowerQuery.contains(entry.getKey()))
+                .map(Map.Entry::getValue)
+                .findFirst()
+                .orElse(null);
+//        for (Map.Entry<String, String> entry : COUNTRY_MAP.entrySet()) {
+//            if (lowerQuery.contains(entry.getKey())) {
+//                countryId = entry.getValue();
+//                break;
+//            }
+//        }
+
+//        // === 4. Detect "from" keyword for country ===
+//        Pattern fromPattern = Pattern.compile("from\\s+(\\w+(?:\\s+\\w+)?)");
+//        Matcher fromMatcher = fromPattern.matcher(lowerQuery);
+//        if (fromMatcher.find() && countryId == null) {
+//            String place = fromMatcher.group(1);
+//            for (Map.Entry<String, String> entry : COUNTRY_MAP.entrySet()) {
+//                if (place.contains(entry.getKey())) {
+//                    countryId = entry.getValue();
+//                    break;
+//                }
+//            }
+//        }
+
+        // === 4. Detect "from" keyword ===
         Pattern fromPattern = Pattern.compile("from\\s+(\\w+(?:\\s+\\w+)?)");
         Matcher fromMatcher = fromPattern.matcher(lowerQuery);
         if (fromMatcher.find() && countryId == null) {
             String place = fromMatcher.group(1);
-            for (Map.Entry<String, String> entry : COUNTRY_MAP.entrySet()) {
-                if (place.contains(entry.getKey())) {
-                    countryId = entry.getValue();
-                    break;
-                }
-            }
+            countryId = COUNTRY_MAP.entrySet().stream()
+                    .sorted((a, b) -> b.getKey().length() - a.getKey().length())
+                    .filter(entry -> place.contains(entry.getKey()))
+                    .map(Map.Entry::getValue)
+                    .findFirst()
+                    .orElse(null);
         }
 
         // === 5. Detect "above/below X" patterns ===
