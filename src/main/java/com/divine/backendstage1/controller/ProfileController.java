@@ -1,10 +1,13 @@
 package com.divine.backendstage1.controller;
 
 import com.divine.backendstage1.service.ProfileService;
+import io.jsonwebtoken.io.IOException;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.Instant;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -268,6 +271,29 @@ public class ProfileController {
         }
 
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/export")
+    public void exportProfiles(
+            @RequestParam(required = false) String gender,
+            @RequestParam(required = false) String age_group,
+            @RequestParam(required = false) String country_id,
+            @RequestParam(required = false) Integer min_age,
+            @RequestParam(required = false) Integer max_age,
+            @RequestParam(required = false) Double min_gender_probability,
+            @RequestParam(required = false) Double min_country_probability,
+            @RequestParam(required = false, defaultValue = "created_at") String sort_by,
+            @RequestParam(required = false, defaultValue = "desc") String order,
+            HttpServletResponse response) throws IOException {
+
+        response.setContentType("text/csv");
+        response.setHeader("Content-Disposition",
+                "attachment; filename=\"profiles_" + Instant.now().toEpochMilli() + ".csv\"");
+
+        profileService.exportCsv(gender, age_group, country_id,
+                min_age, max_age,
+                min_gender_probability, min_country_probability,
+                sort_by, order, response.getWriter());
     }
 }
 

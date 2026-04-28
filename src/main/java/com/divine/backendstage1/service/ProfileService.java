@@ -17,6 +17,7 @@ import com.divine.backendstage1.service.NaturalLanguageParser;
 import com.divine.backendstage1.repository.ProfileSpecification;
 import static com.divine.backendstage1.repository.ProfileSpecification.*;
 
+import java.io.IOException;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -523,5 +524,44 @@ public class ProfileService {
         data.put("country_probability", p.getCountryProbability());
         data.put("created_at", p.getCreatedAt().toString());
         return data;
+    }
+
+    public void exportCsv(String gender, String ageGroup, String countryId,
+                          Integer minAge, Integer maxAge,
+                          Double minGenderProb, Double minCountryProb,
+                          String sortBy, String order,
+                          java.io.Writer writer) throws IOException {
+
+        Sort.Direction direction = "desc".equalsIgnoreCase(order)
+                ? Sort.Direction.DESC : Sort.Direction.ASC;
+
+        Sort sort = switch (sortBy != null ? sortBy.toLowerCase() : "created_at") {
+            case "age" -> Sort.by(direction, "age");
+            case "gender_probability" -> Sort.by(direction, "genderProbability");
+            case "created_at" -> Sort.by(direction, "createdAt");
+            default -> Sort.by(direction, "createdAt");
+        };
+
+        Specification<Profile> spec = Specification
+                .where(ProfileSpecification.hasGender(gender))
+                .and(ProfileSpecification.hasAgeGroup(ageGroup))
+                .and(ProfileSpecification.hasCountryId(countryId))
+                .and(ProfileSpecification.minAge(minAge))
+                .and(ProfileSpecification.maxAge(maxAge))
+                .and(ProfileSpecification.minGenderProbability(minGenderProb))
+                .and(ProfileSpecification.minCountryProbability(minCountryProb));
+
+        List<Profile> profiles = profileRepository.findAll(spec, sort);
+
+        writer.write("id,name,gender,gender_probability,age,age_group," +
+                "country_id,country_name,country_probability,created_at\n");
+
+        for (Profile p : profiles) {
+            writer.write(String.format("%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n",
+                    p.getId(), p.getName(), p.getGender(),
+                    p.getGenderProbability(), p.getAge(), p.getAgeGroup(),
+                    p.getCountryId(), p.getCountryName(),
+                    p.getCountryProbability(), p.getCreatedAt()));
+        }
     }
 }
