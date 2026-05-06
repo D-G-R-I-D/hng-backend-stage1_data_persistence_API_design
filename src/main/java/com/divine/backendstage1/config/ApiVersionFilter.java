@@ -12,7 +12,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.Map;
 
-@Component
+//@Component
 public class ApiVersionFilter extends OncePerRequestFilter {
 
     private final ObjectMapper objectMapper;

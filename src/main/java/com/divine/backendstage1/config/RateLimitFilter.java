@@ -16,7 +16,7 @@ import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-@Component
+//@Component
 public class RateLimitFilter extends OncePerRequestFilter {
 
     private final ObjectMapper objectMapper;
