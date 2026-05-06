@@ -284,7 +284,7 @@ public class ProfileController {
             @RequestParam(required = false) Double min_country_probability,
             @RequestParam(required = false, defaultValue = "created_at") String sort_by,
             @RequestParam(required = false, defaultValue = "desc") String order,
-            HttpServletResponse response) throws IOException {
+            HttpServletResponse response) throws IOException, java.io.IOException {
 
         response.setContentType("text/csv");
         response.setHeader("Content-Disposition",

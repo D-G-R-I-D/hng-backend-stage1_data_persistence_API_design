@@ -22,7 +22,7 @@ public class AuthController {
         this.authService = authService;
     }
 
-    // GET /auth/github — redirect to GitHub
+    // GET /auth/GitHub — redirect to GitHub
     @GetMapping("/github")
     public ResponseEntity<Void> githubLogin(
             @RequestParam String state,
@@ -34,7 +34,7 @@ public class AuthController {
                 .build();
     }
 
-    // GET /auth/github/callback — GitHub redirects here
+    // GET /auth/GitHub/callback — GitHub redirects here
     @GetMapping("/github/callback")
     public ResponseEntity<Object> githubCallback(
             @RequestParam String code,

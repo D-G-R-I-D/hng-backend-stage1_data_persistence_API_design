@@ -361,16 +361,37 @@ public class ProfileService {
 
         Page<Profile> profilePage = profileRepository.findAll(spec, pageable);
 
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("status", "success");
-        result.put("page", page);
-        result.put("limit", limit);
-        result.put("total", profilePage.getTotalElements());
-        result.put("data", profilePage.getContent().stream()
-                .map(this::formatProfileList)
-                .toList());
+        // ↓ THIS IS THE ONLY PART YOU'RE REPLACING ↓
+        int effectiveLimit = limit;
 
-        return result;
+        List<Map<String, Object>> data = profilePage.getContent().stream()
+                .map(this::formatProfileList)
+                .toList();
+
+        String baseUrl = "/api/profiles";
+        String queryBase = "?page=%d&limit=%d";
+
+        String self = baseUrl + String.format(queryBase, page, effectiveLimit);
+        String next = profilePage.hasNext()
+                ? baseUrl + String.format(queryBase, page + 1, effectiveLimit) : null;
+        String prev = profilePage.hasPrevious()
+                ? baseUrl + String.format(queryBase, page - 1, effectiveLimit) : null;
+
+        Map<String, Object> links = new LinkedHashMap<>();
+        links.put("self", self);
+        links.put("next", next);
+        links.put("prev", prev);
+
+        int finalPage = page;
+        return new LinkedHashMap<>() {{
+            put("status", "success");
+            put("page", finalPage);
+            put("limit", effectiveLimit);
+            put("total", profilePage.getTotalElements());
+            put("total_pages", profilePage.getTotalPages());
+            put("links", links);
+            put("data", data);
+        }};
     }
 
     // ==================== NATURAL LANGUAGE SEARCH ====================
@@ -513,6 +534,7 @@ public class ProfileService {
 
     private Map<String, Object> formatProfileList(Profile p) {
         Map<String, Object> data = new LinkedHashMap<>();
+        assert p.getId() != null;
         data.put("id", p.getId().toString());
         data.put("name", p.getName());
         data.put("gender", p.getGender());
