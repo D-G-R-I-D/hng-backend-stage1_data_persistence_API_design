@@ -2,6 +2,7 @@ package com.divine.backendstage1.controller;
 
 import com.divine.backendstage1.model.User;
 import com.divine.backendstage1.service.AuthService;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -53,7 +54,7 @@ public class AuthController {
 
     // POST /auth/refresh
     @PostMapping("/refresh")
-    public ResponseEntity<Object> refresh(@RequestBody Map<String, String> body) {
+    public ResponseEntity<Object> refresh(@RequestBody @NotNull Map<String, String> body) {
         String refreshToken = body.get("refresh_token");
         if (refreshToken == null || refreshToken.isBlank()) {
             return ResponseEntity.badRequest()
@@ -70,7 +71,7 @@ public class AuthController {
 
     // POST /auth/logout
     @PostMapping("/logout")
-    public ResponseEntity<Object> logout(@RequestBody Map<String, String> body) {
+    public ResponseEntity<Object> logout(@RequestBody @NotNull Map<String, String> body) {
         String refreshToken = body.get("refresh_token");
         if (refreshToken != null) {
             authService.logout(refreshToken);

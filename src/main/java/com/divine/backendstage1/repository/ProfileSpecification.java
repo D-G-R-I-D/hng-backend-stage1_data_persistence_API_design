@@ -8,7 +8,7 @@ import org.springframework.data.jpa.domain.Specification;
 public class ProfileSpecification {
 
     @Contract(pure = true)
-    public static Specification<Profile> hasGender(String gender) {
+    public static @NotNull Specification<Profile> hasGender(String gender) {
         return (root, query, cb) ->
                 (gender == null || gender.isBlank() || gender.equals("unknown")) ? null
                         : cb.equal(cb.lower(root.get("gender")), gender.toLowerCase());
@@ -26,7 +26,8 @@ public class ProfileSpecification {
 //                        : cb.equal(cb.lower(root.get("countryId")), countryId.toLowerCase());
 //    }
 
-    public static Specification<Profile> hasCountryId(String countryId) {
+    @Contract(pure = true)
+    public static @NotNull Specification<Profile> hasCountryId(String countryId) {
         return (root, query, cb) -> {
             if (countryId == null || countryId.isBlank() || countryId.equals("unknown")) return null;
             // stored as uppercase e.g. "NG", compare uppercase

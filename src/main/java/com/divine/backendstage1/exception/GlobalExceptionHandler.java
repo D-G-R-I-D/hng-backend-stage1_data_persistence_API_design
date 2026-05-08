@@ -1,5 +1,6 @@
 package com.divine.backendstage1.exception;
 
+import org.jetbrains.annotations.NotNull;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MissingServletRequestParameterException;
@@ -27,7 +28,7 @@ public class GlobalExceptionHandler {
     // Handles missing required params
     @ExceptionHandler(MissingServletRequestParameterException.class)
     public ResponseEntity<Map<String, Object>> handleMissingParam(
-            MissingServletRequestParameterException ex) {
+            @NotNull MissingServletRequestParameterException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(Map.of(
                         "status", "error",
@@ -48,7 +49,7 @@ public class GlobalExceptionHandler {
 
     // Handles all runtime exceptions
     @ExceptionHandler(RuntimeException.class)
-    public ResponseEntity<Map<String, Object>> handleRuntime(RuntimeException ex) {
+    public ResponseEntity<Map<String, Object>> handleRuntime(@NotNull RuntimeException ex) {
         String message = ex.getMessage();
 
         if (message != null && message.startsWith("NOT_FOUND:")) {
