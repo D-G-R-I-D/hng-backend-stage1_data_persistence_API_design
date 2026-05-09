@@ -46,9 +46,10 @@ public class AuthController {
             Map<String, Object> result = authService.handleCallback(code, codeVerifier);
             return ResponseEntity.ok(result);
         } catch (Exception e) {
+            e.printStackTrace();
             return ResponseEntity.status(502)
                     .body(Map.of("status", "error",
-                            "message", "GitHub authentication failed"));
+                            "message", "GitHub authentication failed" + e.getMessage()));
         }
     }
 
