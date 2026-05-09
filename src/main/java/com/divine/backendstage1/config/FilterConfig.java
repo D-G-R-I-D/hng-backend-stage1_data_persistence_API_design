@@ -18,7 +18,7 @@ public class FilterConfig {
     public FilterRegistrationBean<RequestLoggingFilter> loggingFilter() {
         FilterRegistrationBean<RequestLoggingFilter> bean =
                 new FilterRegistrationBean<>(new RequestLoggingFilter());
-        bean.setOrder(1);
+        bean.setOrder(-200);  // was 1
         return bean;
     }
 
@@ -26,7 +26,7 @@ public class FilterConfig {
     public FilterRegistrationBean<RateLimitFilter> rateLimitFilter() {
         FilterRegistrationBean<RateLimitFilter> bean =
                 new FilterRegistrationBean<>(new RateLimitFilter(objectMapper));
-        bean.setOrder(2);
+        bean.setOrder(-150);  // was 2
         return bean;
     }
 
@@ -34,7 +34,7 @@ public class FilterConfig {
     public FilterRegistrationBean<ApiVersionFilter> apiVersionFilter() {
         FilterRegistrationBean<ApiVersionFilter> bean =
                 new FilterRegistrationBean<>(new ApiVersionFilter(objectMapper));
-        bean.setOrder(3);
+        bean.setOrder(-101);  // was 3 — just before Spring Security's -100
         return bean;
     }
 }
