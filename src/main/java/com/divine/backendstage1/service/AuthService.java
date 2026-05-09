@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClient;
 
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
@@ -56,21 +57,30 @@ public class AuthService {
     @Transactional
     public Map<String, Object> handleCallback(String code, String codeVerifier) {
         // 1. Exchange code for GitHub access token
+        // Build token request — use HashMap because Map.of() throws NPE on null values
+        Map<String, String> tokenBody = new HashMap<>();
+        tokenBody.put("client_id", clientId);
+        tokenBody.put("client_secret", clientSecret);
+        tokenBody.put("code", code);
+        tokenBody.put("redirect_uri", redirectUri);
+        if (codeVerifier != null && !codeVerifier.isBlank()) {
+            tokenBody.put("code_verifier", codeVerifier);
+        }
+
         Map<String, Object> tokenResponse = restClient.post()
                 .uri("https://github.com/login/oauth/access_token")
                 .header("Accept", "application/json")
-                .body(Map.of(
-                        "client_id", clientId,
-                        "client_secret", clientSecret,
-                        "code", code,
-                        "redirect_uri", redirectUri,
-                        "code_verifier", codeVerifier
-                ))
+                .body(tokenBody)   // ← use the HashMap
                 .retrieve()
                 .body(new ParameterizedTypeReference<>() {});
 
         assert tokenResponse != null;
         String githubAccessToken = (String) tokenResponse.get("access_token");
+
+        if (githubAccessToken == null) {
+            throw new RuntimeException("GitHub token exchange failed: " +
+                    tokenResponse.getOrDefault("error_description", tokenResponse.get("error")));
+        }
 
         // 2. Get GitHub user info
         Map<String, Object> githubUser = restClient.get()
